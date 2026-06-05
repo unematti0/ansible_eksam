@@ -1,0 +1,82 @@
+ tasks:
+    - name: Debian muutujad
+      set_fact:
+        sudo_group: "sudo"
+        firewall_package: "ufw"
+        firewall_service: "ufw"
+      when: ansible_os_family == "Debian"
+
+    - name: Alma muutujad
+      set_fact:
+        sudo_group: "wheel"
+        firewall_package: "firewalld"
+        firewall_service: "firewalld"
+      when: ansible_os_family == "RedHat"
+
+    
+    - name: hkhk kasutaja loomine
+      user:
+        name: hkhk
+        shell: /bin/bash
+        groups: "{{ sudo_group }}"
+        append: yes
+
+    - name: SSH võti kopeerimine kasutajale hkhk
+      authorized_key:
+        user: hkhk
+        state: present
+        key: "{{ lookup('file', ssh_key_path) }}"
+
+    - name: hkhk kasutajale sudo ilma paroolita
+      copy:
+        content: "hkhk ALL=(ALL) NOPASSWD:ALL"
+        dest: /etc/sudoers.d/hkhk
+        validate: 'visudo -cf %s'
+
+    - name: Keela parooliga sisselogimine SSH kaudu
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+      notify: Restart SSH
+
+    - name: Keela root kasutaja sisselogimine SSH kaudu
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+      notify: Restart SSH
+
+    
+    - name: Paigalda tulemüür
+      package:
+        name: "{{ firewall_package }}"
+        state: present
+
+    - name: Luba SSH ühendused debianis
+      ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+      when: ansible_os_family == "Debian"
+
+    - name: Luba SSH ühendused  Almas
+      firewalld:
+        service: ssh
+        permanent: yes
+        state: enabled
+      when: ansible_os_family == "RedHat"
+
+    - name: Lülita tulemüür sisse
+      systemd:
+        name: "{{ firewall_service }}"
+        state: started
+        enabled: yes
+
+      handlers:
+        - name: Restart SSH
+          service:
+            name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+            state: restarted
+
+
