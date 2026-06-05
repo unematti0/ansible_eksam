@@ -1,4 +1,9 @@
- tasks:
+- hosts: all
+  become: yes
+  vars:
+    ssh_key_path: ~/.ssh/id_rsa.pub  # Veendu, et see tee või muutuja on sul kuskil määratud
+
+  tasks:
     - name: Debian muutujad
       set_fact:
         sudo_group: "sudo"
@@ -13,7 +18,6 @@
         firewall_service: "firewalld"
       when: ansible_os_family == "RedHat"
 
-    
     - name: hkhk kasutaja loomine
       user:
         name: hkhk
@@ -47,7 +51,6 @@
         line: 'PermitRootLogin no'
       notify: Restart SSH
 
-    
     - name: Paigalda tulemüür
       package:
         name: "{{ firewall_package }}"
@@ -60,7 +63,7 @@
         proto: tcp
       when: ansible_os_family == "Debian"
 
-    - name: Luba SSH ühendused  Almas
+    - name: Luba SSH ühendused Almas
       firewalld:
         service: ssh
         permanent: yes
@@ -73,10 +76,8 @@
         state: started
         enabled: yes
 
-      handlers:
-        - name: Restart SSH
-          service:
-            name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
-            state: restarted
-
-
+  handlers:
+    - name: Restart SSH
+      service:
+        name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+        state: restarted
