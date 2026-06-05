@@ -1,7 +1,7 @@
 - hosts: all
   become: yes
   vars:
-    ssh_key_path: ~/.ssh/id_rsa.pub  # Veendu, et see tee või muutuja on sul kuskil määratud
+    ssh_key_path: ~/.ssh/id_ed25519.pub
 
   tasks:
     - name: Debian muutujad
